@@ -5,7 +5,6 @@ public class CaveMeshGeneratorScript : MonoBehaviour
 {
     public SquareGrid squareGrid;
     public MeshFilter walls, cave;
-    float timerTest;
 
     List<Vector3> vertices;
     List<int> triangles;
@@ -24,7 +23,6 @@ public class CaveMeshGeneratorScript : MonoBehaviour
     void Start()
     {
         texTiling = 10;
-        timerTest = 0.0f;
     }
 
     // ------------------------------

@@ -124,7 +124,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
 
     static void CreateViews()
     {
-        CurrWindow = (DG_ToolKitEditorWindow)EditorWindow.GetWindow<DG_ToolKitEditorWindow>();
+        CurrWindow = GetWindow<DG_ToolKitEditorWindow>();
     }
 
     void ProcessEvents(Event e)
