@@ -1,11 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-public class MeshGenerator : MonoBehaviour
+public class CaveMeshGeneratorScript : MonoBehaviour
 {
     public SquareGrid squareGrid;
-    public MeshFilter walls;
-    public MeshFilter cave;
+    public MeshFilter walls, cave;
+    float timerTest;
 
     List<Vector3> vertices;
     List<int> triangles;
@@ -19,16 +19,17 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Starter function that initializes certain variables
     // ------------------------------
     void Start()
     {
         texTiling = 10;
+        timerTest = 0.0f;
     }
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that generates the mesh of the cave
     // ------------------------------
     public void GenerateMesh(int[,] map, float squareSize)
     {
@@ -70,10 +71,11 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that creates the wall mesh of the cave and generates UV coordinates for the walls
     // ------------------------------
     void CreateWall()
     {
+        // Delete old wall colliders from previously generated cave
         MeshCollider currentCollider = GetComponent<MeshCollider>();
         Destroy(currentCollider);
 
@@ -105,6 +107,7 @@ public class MeshGenerator : MonoBehaviour
         wallMesh.triangles = wallTriangles.ToArray();
         walls.mesh = wallMesh;
 
+        // Generate UV coordinates for the walls so that texture may be applied 
         Vector2[] uvs = new Vector2[vert.Count];
         int c = 0;
 
@@ -162,21 +165,21 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that triangulates a square
     // ------------------------------
     void TriangulateSquare(Square square)
     {
         switch (square.configuration)
         {
-            case 0: break;
+            case 0: break; // If no point is selected then we do not have a mesh
 
-            // 1 points:
+            // 1 point selected:
             case 1: MeshFromPoints(square.centreLeft, square.centreBottom, square.bottomLeft); break;
             case 2: MeshFromPoints(square.bottomRight, square.centreBottom, square.centreRight); break;
             case 4: MeshFromPoints(square.topRight, square.centreRight, square.centreTop); break;
             case 8: MeshFromPoints(square.topLeft, square.centreTop, square.centreLeft); break;
 
-            // 2 points:
+            // 2 points selected:
             case 3: MeshFromPoints(square.centreRight, square.bottomRight, square.bottomLeft, square.centreLeft); break;
             case 6: MeshFromPoints(square.centreTop, square.topRight, square.bottomRight, square.centreBottom); break;
             case 9: MeshFromPoints(square.topLeft, square.centreTop, square.centreBottom, square.bottomLeft); break;
@@ -184,13 +187,13 @@ public class MeshGenerator : MonoBehaviour
             case 5: MeshFromPoints(square.centreTop, square.topRight, square.centreRight, square.centreBottom, square.bottomLeft, square.centreLeft); break;
             case 10: MeshFromPoints(square.topLeft, square.centreTop, square.centreRight, square.bottomRight, square.centreBottom, square.centreLeft); break;
 
-            // 3 points:
+            // 3 points selected:
             case 7: MeshFromPoints(square.centreTop, square.topRight, square.bottomRight, square.bottomLeft, square.centreLeft); break;
             case 11: MeshFromPoints(square.topLeft, square.centreTop, square.centreRight, square.bottomRight, square.bottomLeft); break;
             case 13: MeshFromPoints(square.topLeft, square.topRight, square.centreRight, square.centreBottom, square.bottomLeft); break;
             case 14: MeshFromPoints(square.topLeft, square.topRight, square.bottomRight, square.centreBottom, square.centreLeft); break;
 
-            // 4 points:
+            // 4 points selected:
             case 15:
                 MeshFromPoints(square.topLeft, square.topRight, square.bottomRight, square.bottomLeft);
                 checkedVertices.Add(square.topLeft.vertexIndex);
@@ -203,7 +206,7 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that creates triangles based on the number of points
     // ------------------------------
     void MeshFromPoints(params Node[] points)
     {
@@ -221,15 +224,19 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that takes an array of points and assign each point's vertex index
     // ------------------------------
     void AssignVertices(Node[] points)
     {
-        for (int i = 0; i < points.Length; i++)
+        for (int i = 0; i < points.Length; ++i)
         {
+            // Check if the point has got a vertex index (default = -1)
             if (points[i].vertexIndex == -1)
             {
+                // Set point's vertex index equal to the amount of items in vertices 
                 points[i].vertexIndex = vertices.Count;
+
+                // Add new vertex to vertices list
                 vertices.Add(points[i].position);
             }
         }
@@ -237,59 +244,68 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that creates a triangle from the assigned points
     // ------------------------------
     void CreateTriangle(Node a, Node b, Node c)
     {
+        Triangle triangle = new Triangle(a.vertexIndex, b.vertexIndex, c.vertexIndex);
+
         triangles.Add(a.vertexIndex);
         triangles.Add(b.vertexIndex);
         triangles.Add(c.vertexIndex);
 
-        Triangle triangle = new Triangle(a.vertexIndex, b.vertexIndex, c.vertexIndex);
-        AddTriangleToDictionary(triangle.A, triangle);
-        AddTriangleToDictionary(triangle.B, triangle);
-        AddTriangleToDictionary(triangle.C, triangle);
+        // Add triangle to dictionary
+        RegisterTriangle(triangle.A, triangle);
+        RegisterTriangle(triangle.B, triangle);
+        RegisterTriangle(triangle.C, triangle);
     }
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that registers a newly created triangle to a dictionary of triangles
     // ------------------------------
-    void AddTriangleToDictionary(int vertexIndexKey, Triangle triangle)
+    void RegisterTriangle(int vertexID, Triangle triangle)
     {
-        if (triangleDictionary.ContainsKey(vertexIndexKey))
+        // Check if the triangle dictionary contains this vertex index  
+        if (triangleDictionary.ContainsKey(vertexID))
         {
-            triangleDictionary[vertexIndexKey].Add(triangle);
+            // Add new triangle 
+            triangleDictionary[vertexID].Add(triangle);
         }
         else
         {
+            // Create new list of triangles and add triangle to the dictionary of triangles along with its vertex index 
             List<Triangle> triangleList = new List<Triangle>();
             triangleList.Add(triangle);
-            triangleDictionary.Add(vertexIndexKey, triangleList);
+            triangleDictionary.Add(vertexID, triangleList);
         }
     }
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that iterates through vertices, checks if its an outline, follows the outline, and add to the outline list
     // ------------------------------
     void CalculateMeshOutlines()
     {
-        for (int vertexIndex = 0; vertexIndex < vertices.Count; vertexIndex++)
+        // Loop through the vertices
+        for (int i = 0; i < vertices.Count; ++i)
         {
-            if (!checkedVertices.Contains(vertexIndex))
+            if (!checkedVertices.Contains(i))
             {
-                int newOutlineVertex = GetConnectedOutlineVertex(vertexIndex);
+                int newVertex = GetConnectedOutlineVertex(i);
 
-                if (newOutlineVertex != -1)
+                // Check if the new vertex exist
+                if (newVertex != -1)
                 {
-                    checkedVertices.Add(vertexIndex);
+                    // Add the vertex
+                    checkedVertices.Add(i);
 
-                    List<int> newOutline = new List<int>();
-                    newOutline.Add(vertexIndex);
-                    outlines.Add(newOutline);
-                    FollowOutline(newOutlineVertex, outlines.Count - 1);
-                    outlines[outlines.Count - 1].Add(vertexIndex);
+                    List<int> newVertexOutline = new List<int>();
+                    newVertexOutline.Add(i);
+                    outlines.Add(newVertexOutline);
+
+                    FollowOutline(newVertex, outlines.Count - 1);
+                    outlines[outlines.Count - 1].Add(i);
                 }
             }
         }
@@ -297,35 +313,38 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that follows the entire outline
     // ------------------------------
-    void FollowOutline(int vertexIndex, int outlineIndex)
+    void FollowOutline(int vIndex, int oIndex)
     {
-        outlines[outlineIndex].Add(vertexIndex);
-        checkedVertices.Add(vertexIndex);
-        int nextVertexIndex = GetConnectedOutlineVertex(vertexIndex);
+        // Add vertex index to list of outlines
+        outlines[oIndex].Add(vIndex);
+        checkedVertices.Add(vIndex);
 
-        if (nextVertexIndex != -1)
+        int nextVertex = GetConnectedOutlineVertex(vIndex);
+
+        if (nextVertex != -1)
         {
-            FollowOutline(nextVertexIndex, outlineIndex);
+            FollowOutline(nextVertex, oIndex);
         }
     }
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that gets a list of all triangles containing a vertex index
     // ------------------------------
     int GetConnectedOutlineVertex(int vertexIndex)
     {
-        List<Triangle> trianglesContainingVertex = triangleDictionary[vertexIndex];
+        List<Triangle> triangles = triangleDictionary[vertexIndex];
 
-        for (int i = 0; i < trianglesContainingVertex.Count; i++)
+        for (int i = 0; i < triangles.Count; ++i)
         {
-            Triangle triangle = trianglesContainingVertex[i];
+            Triangle triangle = triangles[i];
 
             for (int j = 0; j < 3; ++j)
             {
                 int vertexB = triangle[j];
+
                 if (vertexB != vertexIndex && !checkedVertices.Contains(vertexB))
                 {
                     if (IsOutlineEdge(vertexIndex, vertexB))
@@ -341,14 +360,14 @@ public class MeshGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that checks if the edge formed by two vertices is an outline edge
     // ------------------------------
     bool IsOutlineEdge(int vertexA, int vertexB)
     {
         List<Triangle> trianglesContainingVertexA = triangleDictionary[vertexA];
         int sharedTriangleCount = 0;
 
-        for (int i = 0; i < trianglesContainingVertexA.Count; i++)
+        for (int i = 0; i < trianglesContainingVertexA.Count; ++i)
         {
             if (trianglesContainingVertexA[i].Contains(vertexB))
             {
@@ -383,13 +402,13 @@ public class MeshGenerator : MonoBehaviour
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function that gets the vertices of a triangle
         // ------------------------------
         public int this[int i] { get { return verts[i]; } }
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function used to determine if a triangle contains a certain index
         // ------------------------------
         public bool Contains(int vertexIndex) { return vertexIndex == A || vertexIndex == B || vertexIndex == C; }
     }
@@ -398,10 +417,6 @@ public class MeshGenerator : MonoBehaviour
     {
         public Square[,] squares;
 
-        // ------------------------------
-        // Author: Rony Hanna
-        // Description: 
-        // ------------------------------
         public SquareGrid(int[,] map, float squareSize)
         {
             int nodeCountX = map.GetLength(0);
@@ -452,10 +467,13 @@ public class MeshGenerator : MonoBehaviour
 
             if (topLeft.active)
                 configuration += 8;
+
             if (topRight.active)
                 configuration += 4;
+
             if (bottomRight.active)
                 configuration += 2;
+
             if (bottomLeft.active)
                 configuration += 1;
         }

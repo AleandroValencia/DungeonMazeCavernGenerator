@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using System;
+// Note: using System is used for IComparable interface to compare room sizes (not necessary in DG_ToolKitEditorWindow)
+using System; 
 
-public class MapGenerator : MonoBehaviour
+public class CaveGeneratorScript : MonoBehaviour
 {
-    MeshGenerator meshGenerator;
+    CaveMeshGeneratorScript meshGenerator;
 
     public int width, height;
     public bool GenerateInRunTime = false;
@@ -31,7 +32,7 @@ public class MapGenerator : MonoBehaviour
     // ------------------------------
     void Start()
     {
-        meshGenerator = GetComponent<MeshGenerator>();
+        meshGenerator = GetComponent<CaveMeshGeneratorScript>();
         generateRandomSeed = true;
 
         if (GenerateInRunTime)
@@ -59,9 +60,7 @@ public class MapGenerator : MonoBehaviour
         PopulateMap();
 
         for (int i = 0; i < smoothness; i++)
-        {
-            SmoothMap();
-        }
+            Smooth();
 
         ProcessMap();
 
@@ -83,7 +82,7 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that populates the cave with walls, entrance, and exits
     // ------------------------------
     void PopulateMap()
     {
@@ -122,13 +121,13 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that smoothes out the cave
     // ------------------------------
-    void SmoothMap()
+    void Smooth()
     {
-        for (int i = 0; i < width; ++i)
+        for (int i = 0; i < width - 1; ++i)
         {
-            for (int j = 0; j < height; ++j)
+            for (int j = 0; j < height - 1; ++j)
             {
                 int counter = GetNeighbours(i, j);
 
@@ -142,11 +141,12 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that gets how many neighboring tile that a certain tile has which are walls 
     // ------------------------------
     int GetNeighbours(int gridX, int gridY)
     {
         int counter = 0;
+
         for (int i = gridX - 1; i <= gridX + 1; ++i)
         {
             for (int j = gridY - 1; j <= gridY + 1; ++j)
@@ -172,7 +172,7 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that checks to see if an index is within range (width and height of the cave)
     // ------------------------------
     bool IsInRange(int x, int y)
     {
@@ -193,7 +193,7 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that eliminates certain regions of the cave
     // ------------------------------
     void ProcessMap()
     {
@@ -201,8 +201,8 @@ public class MapGenerator : MonoBehaviour
         List<List<Coord>> wallRegions = GetRegions((int)Meshes.WALL);
         List<List<Coord>> roomRegions = GetRegions((int)Meshes.EMPTY);
 
-        int numOfWalls = 50;
-        int numOfEmpty = 50;
+        const int numOfWalls = 50;
+        const int numOfEmpty = 50;
 
         foreach (List<Coord> wallRegion in wallRegions)
         {
@@ -225,7 +225,7 @@ public class MapGenerator : MonoBehaviour
                 // If so, set this empty region to wall
                 foreach (Coord tile in roomRegion)
                 {
-                    //map[tile.tileX, tile.tileY] = (int)Meshes.WALL;
+                    //map[tile.tileX, tile.tileY] = (int)Meshes.WALL; 
                 }
             }
             else
@@ -244,14 +244,23 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that connects closest surviving rooms together
     // ------------------------------
-    void ConnectClosestRooms(List<Room> allRooms, bool forceAccessibilityFromMainRoom = false)
+    void ConnectClosestRooms(List<Room> allRooms, bool forceAccessibility = false)
     {
+        // Track what the best distance between the rooms 
+        int bestDistance = 0;
+
+        Coord bestTileA = new Coord();
+        Coord bestTileB = new Coord();
+        Room bestRoomA = new Room();
+        Room bestRoomB = new Room();
+        bool connectionFound = false;
+
         List<Room> roomListA = new List<Room>();
         List<Room> roomListB = new List<Room>();
 
-        if (forceAccessibilityFromMainRoom)
+        if (forceAccessibility)
         {
             foreach (Room room in allRooms)
             {
@@ -271,43 +280,34 @@ public class MapGenerator : MonoBehaviour
             roomListB = allRooms;
         }
 
-        int bestDistance = 0;
-        Coord bestTileA = new Coord();
-        Coord bestTileB = new Coord();
-        Room bestRoomA = new Room();
-        Room bestRoomB = new Room();
-        bool possibleConnectionFound = false;
-
         foreach (Room roomA in roomListA)
         {
-            if (!forceAccessibilityFromMainRoom)
+            if (!forceAccessibility)
             {
-                possibleConnectionFound = false;
+                connectionFound = false;
+
                 if (roomA.connectedRooms.Count > 0)
-                {
                     continue;
-                }
             }
 
             foreach (Room roomB in roomListB)
             {
                 if (roomA == roomB || roomA.IsConnected(roomB))
-                {
-                    continue;
-                }
+                    continue;             
 
-                for (int tileIndexA = 0; tileIndexA < roomA.edgeTiles.Count; tileIndexA++)
+                for (int i = 0; i < roomA.edgeTiles.Count; ++i)
                 {
-                    for (int tileIndexB = 0; tileIndexB < roomB.edgeTiles.Count; tileIndexB++)
+                    for (int j = 0; j < roomB.edgeTiles.Count; ++j)
                     {
-                        Coord tileA = roomA.edgeTiles[tileIndexA];
-                        Coord tileB = roomB.edgeTiles[tileIndexB];
-                        int distanceBetweenRooms = (int)(Mathf.Pow(tileA.tileX - tileB.tileX, 2) + Mathf.Pow(tileA.tileY - tileB.tileY, 2));
+                        Coord tileA = roomA.edgeTiles[i];
+                        Coord tileB = roomB.edgeTiles[j];
+                        int dstBetweenRooms = (int)(Mathf.Pow(tileA.tileX - tileB.tileX, 2) + Mathf.Pow(tileA.tileY - tileB.tileY, 2));
 
-                        if (distanceBetweenRooms < bestDistance || !possibleConnectionFound)
+                        // Check if the distance between the rooms is less than the best distance (if a new best connection was found or we have not yet found a possible connection)
+                        if (dstBetweenRooms < bestDistance || !connectionFound)
                         {
-                            bestDistance = distanceBetweenRooms;
-                            possibleConnectionFound = true;
+                            bestDistance = dstBetweenRooms;
+                            connectionFound = true;
                             bestTileA = tileA;
                             bestTileB = tileB;
                             bestRoomA = roomA;
@@ -317,19 +317,20 @@ public class MapGenerator : MonoBehaviour
                 }
             }
 
-            if (possibleConnectionFound && !forceAccessibilityFromMainRoom)
+            // Check if a connection was found
+            if (connectionFound && !forceAccessibility)
             {
                 CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
             }
         }
 
-        if (possibleConnectionFound && forceAccessibilityFromMainRoom)
+        if (connectionFound && forceAccessibility)
         {
             CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
             ConnectClosestRooms(allRooms, true);
         }
 
-        if (!forceAccessibilityFromMainRoom)
+        if (!forceAccessibility)
         {
             ConnectClosestRooms(allRooms, true);
         }
@@ -337,22 +338,16 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that creates a passage between two unconnected rooms 
     // ------------------------------
-    void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB)
+    void CreatePassage(Room unconnectedRoomA, Room unconnectedRoomB, Coord tileA, Coord tileB)
     {
-        Room.ConnectRooms(roomA, roomB);
-        List<Coord> line = GetLine(tileA, tileB);
-
-        foreach (Coord c in line)
-        {
-            DrawCircle(c, 5);
-        }
+        Room.ConnectRooms(unconnectedRoomA, unconnectedRoomB);
     }
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that converts a coordinate into a world position
     // ------------------------------
     Vector3 CoordToWorldPoint(Coord tile)
     {
@@ -361,9 +356,9 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: Function that returns a list of regions of a given type of tile 
     // ------------------------------
-    List<List<Coord>> GetRegions(int tileTjpe)
+    List<List<Coord>> GetRegions(int _tyleType)
     {
         List<List<Coord>> regions = new List<List<Coord>>();
         int[,] mapFlags = new int[width, height];
@@ -372,7 +367,7 @@ public class MapGenerator : MonoBehaviour
         {
             for (int j = 0; j < height; ++j)
             {
-                if (mapFlags[i, j] == (int)Meshes.EMPTY && map[i, j] == tileTjpe)
+                if (mapFlags[i, j] == (int)Meshes.EMPTY && map[i, j] == _tyleType)
                 {
                     List<Coord> newRegion = GetRegionTiles(i, j);
                     regions.Add(newRegion);
@@ -390,7 +385,7 @@ public class MapGenerator : MonoBehaviour
 
     // ------------------------------
     // Author: Rony Hanna
-    // Description: 
+    // Description: A floodfill search function that returns a list of coordinates
     // ------------------------------
     List<Coord> GetRegionTiles(int startX, int startY)
     {
@@ -402,30 +397,37 @@ public class MapGenerator : MonoBehaviour
         queue.Enqueue(new Coord(startX, startY));
         mapFlags[startX, startY] = (int)Meshes.WALL;
 
+        // Check if the queue is not empty
         while (queue.Count > 0)
         {
+            // Retrieve the first item of the queue 
             Coord tile = queue.Dequeue();
+
+            // Add the new tile
             tiles.Add(tile);
 
-            for (int x = tile.tileX - 1; x <= tile.tileX + 1; x++)
+            // Iterate through adjacent tiles
+            for (int i = tile.tileX - 1; i <= tile.tileX + 1; ++i)
             {
-                for (int y = tile.tileY - 1; y <= tile.tileY + 1; y++)
+                for (int j = tile.tileY - 1; j <= tile.tileY + 1; ++j)
                 {
-                    if (IsInRange(x, y) && (y == tile.tileY || x == tile.tileX))
+                    if (IsInRange(i, j) && (j == tile.tileY || i == tile.tileX))
                     {
-                        if (mapFlags[x, y] == 0 && map[x, y] == tileType)
+                        if (mapFlags[i, j] == 0 && map[i, j] == tileType)
                         {
-                            mapFlags[x, y] = (int)Meshes.WALL;
-                            queue.Enqueue(new Coord(x, y));
+                            mapFlags[i, j] = 1; // Tile has been processed
+                            queue.Enqueue(new Coord(i, j)); // Add it to the queue
                         }
                     }
                 }
             }
         }
 
+        // Return list of coordinates
         return tiles;
     }
 
+    // IComparable is the interface for comparable objects
     class Room : IComparable<Room>
     {
         public Room()
@@ -471,42 +473,47 @@ public class MapGenerator : MonoBehaviour
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function that sets the accessibility of a room  
         // ------------------------------
-        public void SetAccessibleFromMainRoom()
+        public void SetAccessibility()
         {
+            // Check if the room is not already accessible from main room
             if (!isAccessibleFromMainRoom)
             {
+                // Set accessibility to true 
                 isAccessibleFromMainRoom = true;
+
+                // Iterate through all the connected rooms 
                 foreach (Room connectedRoom in connectedRooms)
                 {
-                    connectedRoom.SetAccessibleFromMainRoom();
+                    // Set connected rooms as accessible from main room
+                    connectedRoom.SetAccessibility();
                 }
             }
         }
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function that connects two rooms
         // ------------------------------
-        public static void ConnectRooms(Room roomA, Room roomB)
+        public static void ConnectRooms(Room A, Room B)
         {
-            if (roomA.isAccessibleFromMainRoom)
+            if (A.isAccessibleFromMainRoom)
             {
-                roomB.SetAccessibleFromMainRoom();
+                B.SetAccessibility();
             }
-            else if (roomB.isAccessibleFromMainRoom)
+            else if (B.isAccessibleFromMainRoom)
             {
-                roomA.SetAccessibleFromMainRoom();
+                A.SetAccessibility();
             }
 
-            roomA.connectedRooms.Add(roomB);
-            roomB.connectedRooms.Add(roomA);
+            A.connectedRooms.Add(B);
+            B.connectedRooms.Add(A);
         }
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function that checks if rooms are connected
         // ------------------------------
         public bool IsConnected(Room otherRoom)
         {
@@ -515,98 +522,11 @@ public class MapGenerator : MonoBehaviour
 
         // ------------------------------
         // Author: Rony Hanna
-        // Description: 
+        // Description: Function used to determine how two objects should be sorted
         // ------------------------------
         public int CompareTo(Room otherRoom)
         {
             return otherRoom.roomSize.CompareTo(roomSize);
-        }
-    }
-
-    // ------------------------------
-    // Author: Rony Hanna
-    // Description: 
-    // ------------------------------
-    List<Coord> GetLine(Coord from, Coord to)
-    {
-        List<Coord> line = new List<Coord>();
-
-        int x = from.tileX;
-        int y = from.tileY;
-
-        int dx = to.tileX - from.tileX;
-        int dy = to.tileY - from.tileY;
-
-        bool inverted = false;
-        int step = Math.Sign(dx);
-        int gradientStep = Math.Sign(dy);
-
-        int longest = Mathf.Abs(dx);
-        int shortest = Mathf.Abs(dy);
-
-        if (longest < shortest)
-        {
-            inverted = true;
-            longest = Mathf.Abs(dy);
-            shortest = Mathf.Abs(dx);
-
-            step = Math.Sign(dy);
-            gradientStep = Math.Sign(dx);
-        }
-
-        int gradientAccumulation = longest / 2;
-        for (int i = 0; i < longest; i++)
-        {
-            line.Add(new Coord(x, y));
-
-            if (inverted)
-            {
-                y += step;
-            }
-            else
-            {
-                x += step;
-            }
-
-            gradientAccumulation += shortest;
-            if (gradientAccumulation >= longest)
-            {
-                if (inverted)
-                {
-                    x += gradientStep;
-                }
-                else
-                {
-                    y += gradientStep;
-                }
-                gradientAccumulation -= longest;
-            }
-        }
-
-        return line;
-    }
-
-    // ------------------------------
-    // Author: Rony Hanna
-    // Description: 
-    // ------------------------------
-    void DrawCircle(Coord c, int r)
-    {
-        for (int x = -r; x <= r; x++)
-        {
-            for (int y = -r; y <= r; y++)
-            {
-                if (x * x + y * y <= r * r)
-                {
-                    int drawX = c.tileX + x;
-                    int drawY = c.tileY + y;
-
-                    if (IsInRange(drawX, drawY))
-                    {
-                        map[drawX, drawY] = 0;
-                    }
-                }
-            }
         }
     }
 }

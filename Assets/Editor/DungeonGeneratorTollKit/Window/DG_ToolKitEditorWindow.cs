@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using System;
 
 [System.Serializable]
 public class DG_ToolKitEditorWindow : EditorWindow
@@ -178,7 +177,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
                 {
                     foreach (GameObject obj in Selection.gameObjects)
                     {
-                        if (obj.GetComponent<MapGenerator>() != null)
+                        if (obj.GetComponent<CaveGeneratorScript>() != null)
                         {
                             C_CurrCavern = obj.gameObject;
                             RegenerateCavern();
@@ -204,10 +203,10 @@ public class DG_ToolKitEditorWindow : EditorWindow
         g.transform.position = C_Pos;
         g.AddComponent<MeshFilter>();
         g.AddComponent<MeshRenderer>();
-        g.AddComponent<MapGenerator>();
-        g.AddComponent<MeshGenerator>();
+        g.AddComponent<CaveGeneratorScript>();
+        g.AddComponent<CaveMeshGeneratorScript>();
 
-        MapGenerator MapGen = g.GetComponent<MapGenerator>();
+        CaveGeneratorScript MapGen = g.GetComponent<CaveGeneratorScript>();
         MapGen.height = C_height;
         MapGen.width = C_width;
         MapGen.seed = C_seed;
@@ -224,7 +223,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
         w.AddComponent<MeshRenderer>();
         w.GetComponent<MeshRenderer>().material = C_WallMat;
 
-        g.GetComponent<MeshGenerator>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        g.GetComponent<CaveMeshGeneratorScript>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
         if (!GenerateInRunTime)
         {
             MapGen.GenerateMap();
@@ -236,7 +235,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
     {
         C_GeneratedOnce = true;
 
-        MapGenerator MapGen = C_CurrCavern.GetComponent<MapGenerator>();
+        CaveGeneratorScript MapGen = C_CurrCavern.GetComponent<CaveGeneratorScript>();
         MapGen.height = C_height;
         MapGen.width = C_width;
         MapGen.seed = C_seed;
@@ -249,7 +248,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
         GameObject w = C_CurrCavern.transform.Find("Walls").gameObject;
         w.GetComponent<MeshRenderer>().material = C_WallMat;
 
-        C_CurrCavern.GetComponent<MeshGenerator>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        C_CurrCavern.GetComponent<CaveMeshGeneratorScript>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
         if (!GenerateInRunTime)
         {
             MapGen.GenerateMap();
