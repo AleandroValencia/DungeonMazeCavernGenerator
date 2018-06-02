@@ -8,20 +8,15 @@ public class CaveGeneratorScript : MonoBehaviour
     CaveMeshGeneratorScript meshGenerator;
 
     public int width, height;
-    public bool GenerateInRunTime = false;
+    public bool GenerateAtRunTime = false;
     public string seed;
     public bool generateRandomSeed;
     public bool generateExit;
     public bool generateEntrance;
 
-    [Range(1, 10)]
-    public int borderSize = 2;
-
-    [Range(0, 30)]
-    public int smoothness = 10;
-
-    [Range(0, 100)]
-    public int fillPercent;
+    [Range(1, 10)] public int borderSize = 2;
+    [Range(0, 30)] public int smoothness = 10;
+    [Range(0, 100)] public int fillPercent;
 
     enum Meshes { EMPTY = 0, WALL = 1 };
     int[,] map;
@@ -35,7 +30,7 @@ public class CaveGeneratorScript : MonoBehaviour
         meshGenerator = GetComponent<CaveMeshGeneratorScript>();
         generateRandomSeed = true;
 
-        if (GenerateInRunTime)
+        if (GenerateAtRunTime)
             GenerateMap();
     }
 
@@ -125,9 +120,9 @@ public class CaveGeneratorScript : MonoBehaviour
     // ------------------------------
     void Smooth()
     {
-        for (int i = 0; i < width - 1; ++i)
+        for (int i = 0; i < width; ++i)
         {
-            for (int j = 0; j < height - 1; ++j)
+            for (int j = 0; j < height; ++j)
             {
                 int counter = GetNeighbours(i, j);
 
@@ -181,8 +176,7 @@ public class CaveGeneratorScript : MonoBehaviour
 
     struct Coord
     {
-        public int tileX;
-        public int tileY;
+        public int tileX, tileY;
 
         public Coord(int x, int y)
         {
@@ -343,6 +337,11 @@ public class CaveGeneratorScript : MonoBehaviour
     void CreatePassage(Room unconnectedRoomA, Room unconnectedRoomB, Coord tileA, Coord tileB)
     {
         Room.ConnectRooms(unconnectedRoomA, unconnectedRoomB);
+
+        List<Coord> line = TwoPointLine(tileA, tileB);
+
+        foreach (Coord c in line)
+            Circle(c, 5);
     }
 
     // ------------------------------
@@ -351,7 +350,7 @@ public class CaveGeneratorScript : MonoBehaviour
     // ------------------------------
     Vector3 CoordToWorldPoint(Coord tile)
     {
-        return new Vector3(-width / 2 + .5f + tile.tileX, 2, -height / 2 + .5f + tile.tileY);
+        return new Vector3(-width / 2 + 0.5f + tile.tileX, 2, -height / 2 + 0.5f + tile.tileY);
     }
 
     // ------------------------------
@@ -430,8 +429,7 @@ public class CaveGeneratorScript : MonoBehaviour
     // IComparable is the interface for comparable objects
     class Room : IComparable<Room>
     {
-        public Room()
-        { }
+        public Room() { /* Do Nothing */ }
 
         // Coordinates of all points that the room cointains 
         public List<Coord> tiles;
@@ -527,6 +525,89 @@ public class CaveGeneratorScript : MonoBehaviour
         public int CompareTo(Room otherRoom)
         {
             return otherRoom.roomSize.CompareTo(roomSize);
+        }
+    }
+
+    // ------------------------------
+    // Author: Rony Hanna
+    // Description: Function that helps create a path between the rooms using Bresenham's line algorithm
+    // ------------------------------
+    List<Coord> TwoPointLine(Coord start, Coord finish)
+    {
+        List<Coord> line = new List<Coord>();
+        int x = 0, y = 0, dx = 0, dy = 0;
+        int step = 0, gradientStep = 0, longest = 0, shortest = 0, gradientAccumulation = 0;
+        bool bInverted = false;
+
+        x = start.tileX;
+        y = start.tileY;
+
+        dx = finish.tileX - start.tileX;
+        dy = finish.tileY - start.tileY;
+
+        step = Math.Sign(dx);
+        gradientStep = Math.Sign(dy);
+
+        longest = Mathf.Abs(dx);
+        shortest = Mathf.Abs(dy);
+
+        if (longest < shortest)
+        {
+            longest = Mathf.Abs(dy);
+            shortest = Mathf.Abs(dx);
+
+            step = Math.Sign(dy);
+            gradientStep = Math.Sign(dx);
+
+            bInverted = true;
+        }
+
+        gradientAccumulation = longest / 2;
+
+        for (int i = 0; i < longest; ++i)
+        {
+            line.Add(new Coord(x, y));
+
+            if (bInverted)
+                y += step;
+            else
+                x += step;
+            
+            gradientAccumulation += shortest;
+
+            if (gradientAccumulation >= longest)
+            {
+                if (bInverted)
+                    x += gradientStep;
+                else
+                    y += gradientStep;
+
+                gradientAccumulation -= longest;
+            }
+        }
+
+        return line;
+    }
+
+    // ------------------------------
+    // Author: Rony Hanna
+    // Description: Function that helps clear the map around the path points to ensure the path is clear
+    // ------------------------------
+    void Circle(Coord c, int r)
+    {
+        for (int i = -r; i <= r; ++i)
+        {
+            for (int j = -r; j <= r; ++j)
+            {
+                if (i * i + j * j <= r * r)
+                {
+                    int drawX = c.tileX + i;
+                    int drawY = c.tileY + j;
+
+                    if (IsInRange(drawX, drawY))
+                        map[drawX, drawY] = 0;
+                }
+            }
         }
     }
 }

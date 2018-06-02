@@ -124,7 +124,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
 
     static void CreateViews()
     {
-        CurrWindow = GetWindow<DG_ToolKitEditorWindow>();
+        CurrWindow = (DG_ToolKitEditorWindow)EditorWindow.GetWindow<DG_ToolKitEditorWindow>();
     }
 
     void ProcessEvents(Event e)
@@ -212,7 +212,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
         MapGen.seed = C_seed;
         MapGen.generateRandomSeed = C_isRandomSeed;
         MapGen.fillPercent = C_randomFillPercent;
-        MapGen.GenerateInRunTime = GenerateInRunTime;
+        MapGen.GenerateAtRunTime = GenerateInRunTime;
 
         g.GetComponent<MeshRenderer>().material = C_RockMat;
 
@@ -241,7 +241,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
         MapGen.seed = C_seed;
         MapGen.generateRandomSeed = C_isRandomSeed;
         MapGen.fillPercent = C_randomFillPercent;
-        MapGen.GenerateInRunTime = GenerateInRunTime;
+        MapGen.GenerateAtRunTime = GenerateInRunTime;
 
         C_CurrCavern.GetComponent<MeshRenderer>().material = C_RockMat;
 
