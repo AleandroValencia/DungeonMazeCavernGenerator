@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class CaveMeshGeneratorScript : MonoBehaviour
 {
     public SquareGrid squareGrid;
-    public MeshFilter walls, cave;
+    public MeshFilter walls, cave, ground;
     float timerTest;
 
     List<Vector3> vertices;
@@ -14,7 +14,7 @@ public class CaveMeshGeneratorScript : MonoBehaviour
     List<List<int>> outlines = new List<List<int>>();
     HashSet<int> checkedVertices = new HashSet<int>();
 
-    int texTiling;
+    [Range(1, 100)] public int texTiling;
     int[,] mapCopy;
 
     // ------------------------------
@@ -67,6 +67,7 @@ public class CaveMeshGeneratorScript : MonoBehaviour
         mesh.uv = uvs;
 
         CreateWall();
+        CreateGround(map, 1);
     }
 
     // ------------------------------
@@ -161,6 +162,46 @@ public class CaveMeshGeneratorScript : MonoBehaviour
 
         MeshCollider wallCollider = gameObject.AddComponent<MeshCollider>();
         wallCollider.sharedMesh = wallMesh;
+    }
+
+    public void CreateGround(int[,] map, float squareSize)
+    {
+        triangleDictionary.Clear();
+        checkedVertices.Clear();
+
+        squareGrid = new SquareGrid(map, squareSize, -5);
+
+        vertices.Clear();
+        triangles.Clear();
+
+        for (int i = 0; i < squareGrid.squares.GetLength(0); ++i)
+            for (int j = 0; j < squareGrid.squares.GetLength(1); ++j)
+                TriangulateSquare(squareGrid.squares[i, j]);
+
+        Mesh mesh = new Mesh();
+        ground.mesh = mesh;
+
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+
+        MeshCollider groundCollider = ground.gameObject.GetComponent<MeshCollider>();
+
+        if (!groundCollider)
+            groundCollider = ground.gameObject.AddComponent<MeshCollider>();
+
+        groundCollider.sharedMesh = mesh;
+
+        Vector2[] uvs = new Vector2[vertices.Count];
+
+        for (int i = 0; i < vertices.Count; ++i)
+        {
+            float percentX = Mathf.InverseLerp(-map.GetLength(0) / 2 * squareSize, map.GetLength(0) / 2 * squareSize, vertices[i].x) * texTiling;
+            float percentY = Mathf.InverseLerp(-map.GetLength(1) / 2 * squareSize, map.GetLength(1) / 2 * squareSize, vertices[i].z) * texTiling;
+            uvs[i] = new Vector2(percentX, percentY);
+        }
+
+        mesh.uv = uvs;
     }
 
     // ------------------------------
@@ -438,6 +479,35 @@ public class CaveMeshGeneratorScript : MonoBehaviour
             squares = new Square[nodeCountX - 1, nodeCountY - 1];
 
             for (int i = 0; i < nodeCountX - 1; ++i)
+            {
+                for (int j = 0; j < nodeCountY - 1; ++j)
+                {
+                    squares[i, j] = new Square(controlNodes[i, j + 1], controlNodes[i + 1, j + 1], controlNodes[i + 1, j], controlNodes[i, j]);
+                }
+            }
+        }
+
+        public SquareGrid(int[,] map, float squareSize, float wallHeight)
+        {
+            int nodeCountX = map.GetLength(0);
+            int nodeCountY = map.GetLength(1);
+            float mapWidth = nodeCountX * squareSize;
+            float mapHeight = nodeCountY * squareSize;
+
+            ControlNode[,] controlNodes = new ControlNode[nodeCountX, nodeCountY];
+
+            for (int i = 0; i < nodeCountX; ++i)
+            {
+                for (int j = 0; j < nodeCountY; ++j)
+                {
+                    Vector3 pos = new Vector3(-mapWidth / 2 + i * squareSize + squareSize / 2, wallHeight, -mapHeight / 2 + j * squareSize + squareSize / 2);  
+                    controlNodes[i, j] = new ControlNode(pos, map[i, j] == 0, squareSize);  
+                }
+            }
+
+            squares = new Square[nodeCountX - 1, nodeCountY - 1];
+
+            for (int i= 0; i < nodeCountX - 1; ++i)
             {
                 for (int j = 0; j < nodeCountY - 1; ++j)
                 {
