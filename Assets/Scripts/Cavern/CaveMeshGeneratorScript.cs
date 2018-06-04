@@ -31,7 +31,7 @@ public class CaveMeshGeneratorScript : MonoBehaviour
     // Author: Rony Hanna
     // Description: Function that generates the mesh of the cave
     // ------------------------------
-    public void GenerateMesh(int[,] map, float squareSize)
+    public void GenerateMesh(int[,] map, float squareSize, bool createGround = false)
     {
         mapCopy = map;
 
@@ -67,7 +67,9 @@ public class CaveMeshGeneratorScript : MonoBehaviour
         mesh.uv = uvs;
 
         CreateWall();
-        CreateGround(map, 1);
+
+        if (createGround)
+            CreateGround(map, 1);
     }
 
     // ------------------------------

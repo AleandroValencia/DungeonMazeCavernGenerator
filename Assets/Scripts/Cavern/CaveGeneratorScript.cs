@@ -11,8 +11,9 @@ public class CaveGeneratorScript : MonoBehaviour
     public bool GenerateAtRunTime = false;
     public string seed;
     public bool generateRandomSeed;
-    public bool generateExit;
+    public bool generateExits;
     public bool generateEntrance;
+    public bool generateGround;
 
     [Range(1, 10)] public int borderSize = 2;
     [Range(0, 30)] public int smoothness = 10;
@@ -29,9 +30,10 @@ public class CaveGeneratorScript : MonoBehaviour
     {
         meshGenerator = GetComponent<CaveMeshGeneratorScript>();
         generateRandomSeed = true;
-
-        if (GenerateAtRunTime)
-            GenerateMap();
+        generateExits = false;
+        generateEntrance = false;
+        generateGround = false;
+        GenerateMap();
     }
 
     // ------------------------------
@@ -64,7 +66,7 @@ public class CaveGeneratorScript : MonoBehaviour
 
         for (int i = 0; i < borderedMap.GetLength(0); ++i)
             for (int j = 0; j < borderedMap.GetLength(1); ++j)
-                if (j >= borderedMap.GetLength(1) - 5 && j <= borderedMap.GetLength(1) && generateExit)
+                if (j >= borderedMap.GetLength(1) - 5 && j <= borderedMap.GetLength(1) && generateExits)
                     // Create exit(s)
                     borderedMap[i, j] = (int)Meshes.EMPTY;
                 else if (i >= borderSize && i < width + borderSize && j >= borderSize && j < height + borderSize)
@@ -72,7 +74,7 @@ public class CaveGeneratorScript : MonoBehaviour
                 else
                     borderedMap[i, j] = (int)Meshes.EMPTY;
 
-        meshGenerator.GenerateMesh(borderedMap, 1);
+        meshGenerator.GenerateMesh(borderedMap, 1, generateGround);
     }
 
     // ------------------------------
