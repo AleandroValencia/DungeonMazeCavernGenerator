@@ -35,6 +35,8 @@ public class DungeonMapGeneration : MonoBehaviour
 
     void Awake()
     {
+        // if user wants the dungeon to be generated in run time 
+        // then generate otherwise Map Generation will be called in editor script
        if (GenerateInRunTime)
        {
             MapGeneration();
@@ -44,10 +46,11 @@ public class DungeonMapGeneration : MonoBehaviour
     #endregion
 
     #region Utillity Methods
+    // main function used to generate map
     public void MapGeneration()
     {
+        // user error checking, checks if user has not put in difficulties weirdly
         int countError = 0;
-
         foreach(room r in Rooms)
         {
             if(r.Difficulty >= TargetDifficultyMin && r.Difficulty <= TargetDifficultyMax)
@@ -56,14 +59,15 @@ public class DungeonMapGeneration : MonoBehaviour
             }
         }
 
-        //Debug.Log(countError);
-
+        // if difficualties are ok continue
         if (countError >= 2)
         {
-
+            //if pathfinder cannot find a path from start room to end room with rooms 
+            // within the difficulty range user has chosen try again
             while (!pathSuccess)
             {
-                //Debug.Log("MapGen MaxSize : " + MaxSize);
+                // set up for map, adding room pivots to map
+                // roompivots are there so that all rooms positions are counted from top left corner
                 MaxSize = Width * Height;
                 Map = new DMapNode[Width, Height];
                 roomPivots = new RoomPivot[MaxSize];
@@ -83,30 +87,32 @@ public class DungeonMapGeneration : MonoBehaviour
                         h++;
                     }
                 }
+                // resets map in case of regeneration
                 ResetMap();
 
-               // ShowMap();
-
+               // adds rooms so that they all fit with no spaces between them inside the spacified size of the map square
                 FillMapRandomRooms();
+                // trys to find a path with a star path finding of rooms that have a difficulty that ranges with in the user chosen difficulty range 
                 FindPath();
                 if(!pathSuccess)
                 {
                     Debug.Log("The map generated was not successfully made trying again");
                 }
             }
-            //ShowMap();
-            //ShowMapWithPath();
 
+           
+            // add rooms to actual game/engine world parenting them to  the dungeon object
+            // only adds rooms identified by path as being in path
             for (int i = 0; i < waypoints.Length; i++)
             {
                 GetRoomPosition(Map[waypoints[i].x, waypoints[i].y].Symbol.ToString());
             }
-
             AddObjectsToMap();
         }
         this.transform.localScale = Scale;
     }
 
+   // gets all rooms with a specific symbol in map
     void GetRoomPosition(string Symbol)
     {
         for (int y = 0; y < roomPivots.Length; y++)
@@ -118,8 +124,10 @@ public class DungeonMapGeneration : MonoBehaviour
         }
     }
 
+    // adds rooms so that they all fit with no spaces between them inside the spacified size of the map square
     void FillMapRandomRooms()
     {
+        // initialize  nodes in map including start room nodes and end rooms nodes in map
         int h1 = 0;
         for (int y1 = 0; y1 < Height; y1++)
         {
@@ -155,6 +163,7 @@ public class DungeonMapGeneration : MonoBehaviour
             }
         }
 
+        // if user has chosen a random seed initialize seed here
         if (UsingRandom)
         {
             Seed = Time.time.ToString() + UnityEngine.Random.Range(0, 1000);
@@ -163,7 +172,7 @@ public class DungeonMapGeneration : MonoBehaviour
         System.Random RandSeed = new System.Random(Seed.GetHashCode());
 
    
-
+        
         int i = 0;
         float z = 0;
         int h = 0;
@@ -173,51 +182,51 @@ public class DungeonMapGeneration : MonoBehaviour
         bool first = true;
         bool b_hit = false;
         bool MadeSmaller = false;
+        // begins loop to add all rooms into map square with no spaces
+        // rooms are compacted in, can handle all room sizes
+        // the generator goes node by node from the top left of the map 
+        // to the bottom of the map from collum by collum then row by row
+        // do this until the whole map has been filled
+        // **** THERE HAVE NOT BEEN ANY GAME OBJECTS MADE YET THIS IS ALL ON AN 2D ARRAY IN SYSTEM VERY LIGHT WEIGHT ***
         while (y < Height)
         {
             while (x < Width)
             {
+                // choose a room randomly from list of rooms provided
                 room Room;
                 i = RandSeed.Next(0, Rooms.Count);
-
                 Room = Rooms[i];
-                //Debug.Log(Room.RoomObj.name);
 
-                //Debug.Log("number : " + number);
+                // begin checks to make sure room can be fit into map
                 // check y
                 if (Room.Size.y > ((Height) - y) )
                 {
-                    //Debug.Log("Getting smaller room");
+                    // if it cannot be fit in because it is too tall grab a shorter room from list of rooms
                     Room = GetSmallerRoomY(((Height) - y));
                     MadeSmaller = true;
                 }
-
-                //Debug.Log("width : " + Width);
-                //Debug.Log("z : " + z);
-                //Debug.Log("h : " + h);
                 // check x
                 if (Room.Size.x > ((Width) - z))
                 {
-                    //Debug.Log("Getting smaller room");
                     if(MadeSmaller)
                     {
+                        // if it already has been made shorter because it was too tall
+                        // and now it is too wide get the smallest rooms in all ways possible
+                        // with in list of rooms 
                        Room = GetRoom(new Vector2Int((int)((Width) - z), ((Height) - y)));
                     }
                     else
                     {
+                        // if it cannot be fit in because it is too wide grab a thinner room from list of rooms
                         Room = GetSmallerRoomX((int)((Width) - z));
                     }
                 }
-   
 
-                //Debug.Log("height left: " + ((Height) - y));
-                //Debug.Log("width left: " + ((Width) - z));
-                //Debug.Log(Room.RoomObj.name);
-
-                //Debug.Log("number : " + number);
-
+                // if room being put in is not first room (apart from start and end) being put into map
                 if (!first)
                 {
+                    // check if room is colliding with another room in the position generator is tryign to put it in
+                    // if it is not colliding with another room then place it down
                     if (!CheckHitMap(new Vector2(Room.Size.x, Room.Size.y), new Vector2Int((int)z, y)))
                     {
                         if (number <= 9)
@@ -246,13 +255,11 @@ public class DungeonMapGeneration : MonoBehaviour
                     }
                     else
                     {
+                        // if it does collide with another room try to move a node to its right and place it again
+                        // continue trying to do this until the room is too wide to be place on that row
+                        // if it is too wide try another room
                         while (!placed)
                         {
-                            //Debug.Log("\nChecking for place");
-                            //Debug.Log("width : " + Width);
-                            //Debug.Log("z : " + z);
-                            //Debug.Log("h : " + h);
-
                             if (z >= Width || Room.Size.x > ((Width) - z))
                             {
                                 h += (int)((Width) - z);
@@ -290,9 +297,7 @@ public class DungeonMapGeneration : MonoBehaviour
                                 }
                                 else
                                 {
-                                    //AddtoMap(new Vector2(Rooms[i].Size.x, Rooms[i].Size.y), new Vector2Int((int)z, y), "X");
                                     z += Room.Size.x;
-                                    //roomPivots[h].name = "null";
                                     h += (int)Room.Size.x;
                                     x++;
                                 }
@@ -302,6 +307,9 @@ public class DungeonMapGeneration : MonoBehaviour
                 }
                 else
                 {
+                    // if the room is the first room to be placed check if it is colliding with eaither the 
+                    // starting room or ending room
+                    // if it is move across row until it can be placed
                     if (!CheckHitMap(new Vector2(Room.Size.x, Room.Size.y), new Vector2Int((int)z, y)))
                     {
                         if (number <= 9)
@@ -336,7 +344,6 @@ public class DungeonMapGeneration : MonoBehaviour
                     break;
                 }
                 placed = false;
-                //ShowMap();
                 if (z == Width)
                 {
                     break;
@@ -347,14 +354,19 @@ public class DungeonMapGeneration : MonoBehaviour
             z = 0;
             x = 0;
             y++;
-            //ShowMap();
         }
 
     }
 
-   
+    // add rooms to actual game/engine world parenting them to  the dungeon object
+    // only adds rooms identified by path as being in path
     void AddObjectsToMap()
     {
+        // using the waypoint positions given by the path finding algorithm find each room and add it to map
+        // check where each room is and do not add room twice
+        // this is checked through the symbol as each room has a symbol
+        // so if a room takes up multiple nodes in map (and if it is not a 1 by 1 it will) than it will 
+        // not be added multiple times on top of each other in the actuall game world 
         for(int h = 0; h < roomPivots.Length; h++)
         {
             if (roomPivots[h].MapNode.IsInMap == true)
@@ -377,9 +389,10 @@ public class DungeonMapGeneration : MonoBehaviour
         }
     }
 
+    // get room from list of rooms of size specified
+    // if there are multiple chooses at random
     room GetRoom(Vector2Int _RoomSize)
     {
-        //Debug.Log("room size: " + _RoomSize);
         List<room> TempList = new List<room>();
         System.Random RandSeed = new System.Random(Seed.GetHashCode());
 
@@ -387,18 +400,16 @@ public class DungeonMapGeneration : MonoBehaviour
         {
             if(r.Size == _RoomSize)
             {
-                //Debug.Log(r.RoomObj.name);
                 TempList.Add(r);
             }
         }
-
-        //Debug.Log("rooms.count: " + (TempList.Count ));
         int rand = RandSeed.Next(0, TempList.Count);
-        //Debug.Log("rand: " + rand);
         Temp = TempList[rand];
         return Temp;
     }
 
+    // get room from list of rooms of height smaller than the height passed
+    // if there are multiple chooses at random
     room GetSmallerRoomY(int _Y)
     {
         List<room> TempList = new List<room>();
@@ -410,14 +421,13 @@ public class DungeonMapGeneration : MonoBehaviour
                 TempList.Add(r);
             }
         }
-        //Debug.Log("rooms.count: " + (TempList.Count));
         int rand = RandSeed.Next(0, TempList.Count);
-        //Debug.Log("rand: " + rand);
         Temp = TempList[rand];
-
         return Temp;
     }
 
+    // get room from list of rooms of width smaller than the width passed
+    // if there are multiple chooses at random
     room GetSmallerRoomX(int _X)
     {
         List<room> TempList = new List<room>();
@@ -429,15 +439,12 @@ public class DungeonMapGeneration : MonoBehaviour
                 TempList.Add(r);
             }
         }
-
-        //Debug.Log("rooms.count: " + (TempList.Count));
         int rand = RandSeed.Next(0, TempList.Count);
-        //Debug.Log("rand: " + rand);
         Temp = TempList[rand];
-
         return Temp;
     }
 
+    // clears dungeon
     public void ReStartDungeon()
     {
         foreach (RoomPivot obj in roomPivots)
@@ -447,9 +454,9 @@ public class DungeonMapGeneration : MonoBehaviour
         ResetMap();
     }
 
+    // debug function to show path in map on console
     void ShowMapWithPath()
     {
-        //Debug.Log(waypoints.Length);
         string output = "";
         int num = 0;
         for (int x1 = 0; x1 < Width; x1++)
@@ -517,6 +524,7 @@ public class DungeonMapGeneration : MonoBehaviour
         output = "";
     }
 
+    // debug function to show map on console
     void ShowMap()
     {
         string output = "";
@@ -565,6 +573,7 @@ public class DungeonMapGeneration : MonoBehaviour
         output = "";
     }
 
+    // hit check, checks if rooms are colliding when being placed
     bool CheckHitMap(Vector2 size, Vector2Int pos)
     {
         for (int y = 0; y < size.y; y++)
@@ -580,6 +589,7 @@ public class DungeonMapGeneration : MonoBehaviour
         return false;
     }
 
+    // resets map 
     void ResetMap()
     {
         for (int y = 0; y < Height; y++)
@@ -591,6 +601,7 @@ public class DungeonMapGeneration : MonoBehaviour
         }
     }
 
+    // adds room to map
     void AddtoMap(Vector2 size, Vector2Int pos, string _Symbol, int _Difficulty)
     {
         for (int y = 0; y < size.y; y++)
@@ -608,18 +619,16 @@ public class DungeonMapGeneration : MonoBehaviour
 
     #region PathFinding Methods
 
+    // path finding function using a star path finding
     public void FindPath()
     {
         waypoints = new Vector2Int[0];
         pathSuccess = false;
 
-       // Debug.Log("Starting Path Finding");
-
         DMapNode startNode = DMapStartNode;
         DMapNode targetNode = DMapEndNode;
         startNode.parent = startNode;
 
-        //Debug.Log("FindPath MaxSize : " + MaxSize);
         Heap<DMapNode> openSet = new Heap<DMapNode>(MaxSize);
         HashSet<DMapNode> closedSet = new HashSet<DMapNode>();
         openSet.Add(startNode);
@@ -640,9 +649,6 @@ public class DungeonMapGeneration : MonoBehaviour
             {
                 foreach (DMapNode neighbour in GetNeighboursFourAxis(currentNode))
                 {
-                    //Debug.Log("in neighbour loop");
-
-                    //Debug.Log("current Node : " + currentNode.Symbol);
                     if (closedSet.Contains(neighbour))
                     {
                         continue;
@@ -654,11 +660,6 @@ public class DungeonMapGeneration : MonoBehaviour
                         neighbour.GCost = newMovementCostToNeighbour;
                         neighbour.HCost = GetDistance(neighbour, targetNode);
                         neighbour.parent = currentNode;
-                        //Debug.Log("NodeCurrently looking at: " + neighbour.GirdPosition);
-                        //Debug.Log("current node parented: " + neighbour.parent.GirdPosition);
-                        //Debug.Log("newMovementCostToNeighbour: " + newMovementCostToNeighbour);
-                        //path.Add(currentNode);
-                        //Debug.Log("neighbour.parent : " + neighbour.parent.Symbol);
 
                         if (!openSet.Contains(neighbour))
                             openSet.Add(neighbour);
@@ -672,9 +673,6 @@ public class DungeonMapGeneration : MonoBehaviour
 
                 foreach (DMapNode neighbour in GetNeighboursFourAxis(currentNode))
                 {
-                    //Debug.Log("in neighbour loop");
-
-                    //Debug.Log("current Node : " + currentNode.Symbol);
                     if (closedSet.Contains(neighbour))
                     {
                         continue;
@@ -689,11 +687,6 @@ public class DungeonMapGeneration : MonoBehaviour
                             neighbour.GCost = newMovementCostToNeighbour;
                             neighbour.HCost = GetDistance(neighbour, targetNode);
                             neighbour.parent = currentNode;
-                            //Debug.Log("NodeCurrently looking at: " + neighbour.GirdPosition);
-                            //Debug.Log("current node parented: " + neighbour.parent.GirdPosition);
-                            //Debug.Log("newMovementCostToNeighbour: " + newMovementCostToNeighbour);
-                            //path.Add(currentNode);
-                            //Debug.Log("neighbour.parent : " + neighbour.parent.Symbol);
 
                             if (!openSet.Contains(neighbour))
                                 openSet.Add(neighbour);
@@ -710,27 +703,18 @@ public class DungeonMapGeneration : MonoBehaviour
 
         if (pathSuccess)
         {
-            //Debug.Log("start node parent : " + startNode.parent.GirdPosition);
-            //Debug.Log("end node parent : " + targetNode.parent.GirdPosition);
             waypoints = RetracePath(startNode, targetNode);
-            //waypoints = ListToVector(path);
-            //Array.Reverse(waypoints);
             pathSuccess = waypoints.Length > 0;
-            //Debug.Log("waypoints : " + waypoints.Length);
         }
-
-         //Debug.Log("Path success : " + pathSuccess);
-
     }
 
+    // utility function for a star pathfinding
     Vector2Int[] RetracePath(DMapNode _StartNode, DMapNode _EndNode)
     {
         List<DMapNode> path = new List<DMapNode>();
         DMapNode currentNode = _EndNode;
         while (currentNode != _StartNode)
         {
-            //Debug.Log("current: " + currentNode.GirdPosition);
-            //Debug.Log("Parent: " + currentNode.parent.GirdPosition);
             path.Add(currentNode);
             currentNode = currentNode.parent;
         }
@@ -739,6 +723,8 @@ public class DungeonMapGeneration : MonoBehaviour
         return waypoints;
     }
 
+
+    // utility function for a star pathfinding
     Vector2Int[] ListToVector(List<DMapNode> _Path)
     {
         List<Vector2Int> Waypoints = new List<Vector2Int>();
@@ -750,6 +736,8 @@ public class DungeonMapGeneration : MonoBehaviour
         return Waypoints.ToArray();
     }
 
+
+    // utility function for a star pathfinding
     int GetDistance(DMapNode _NodeA, DMapNode _NodeB)
     {
         int dstX = (int)Mathf.Abs(_NodeA.GirdPosition.x - _NodeB.GirdPosition.x);
@@ -760,6 +748,8 @@ public class DungeonMapGeneration : MonoBehaviour
         return 14 * dstX + 10 * (dstY - dstX);
     }
 
+
+    // utility function for a star pathfinding
     List<DMapNode> GetNeighboursFourAxis(DMapNode _Node)
     {
         List<DMapNode> Neighbours = new List<DMapNode>();
@@ -784,95 +774,11 @@ public class DungeonMapGeneration : MonoBehaviour
 
                 if (CheckX >= 0 && CheckX < Width && CheckY >= 0 && CheckY < Height)
                 {
-                    //Debug.Log("Neighbour Position: " + CheckX +  " , " + CheckY);
                     Neighbours.Add(Map[CheckX, CheckY]);
                 }
             }
         }
         return Neighbours;
-    }
-
-    #endregion
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //debug//
-    #region Debug Methods
-
-    public static void DrawBoxCastOnHit(Vector3 origin, Vector3 halfExtents, Quaternion orientation, Vector3 direction, float hitInfoDistance, Color color)
-    {
-        origin = CastCenterOnCollision(origin, direction, hitInfoDistance);
-        DrawBox(origin, halfExtents, orientation, color);
-    }
-    public static void DrawBox(Vector3 origin, Vector3 halfExtents, Quaternion orientation, Color color)
-    {
-        DrawBox(new Box(origin, halfExtents, orientation), color);
-    }
-    public static void DrawBox(Box box, Color color)
-    {
-        Debug.DrawLine(box.frontTopLeft, box.frontTopRight, color, 400);
-        Debug.DrawLine(box.frontTopRight, box.frontBottomRight, color, 400);
-        Debug.DrawLine(box.frontBottomRight, box.frontBottomLeft, color, 400);
-        Debug.DrawLine(box.frontBottomLeft, box.frontTopLeft, color, 400);
-
-        Debug.DrawLine(box.backTopLeft, box.backTopRight, color, 400);
-        Debug.DrawLine(box.backTopRight, box.backBottomRight, color, 400);
-        Debug.DrawLine(box.backBottomRight, box.backBottomLeft, color, 400);
-        Debug.DrawLine(box.backBottomLeft, box.backTopLeft, color, 400);
-
-        Debug.DrawLine(box.frontTopLeft, box.backTopLeft, color, 400);
-        Debug.DrawLine(box.frontTopRight, box.backTopRight, color, 400);
-        Debug.DrawLine(box.frontBottomRight, box.backBottomRight, color, 400);
-        Debug.DrawLine(box.frontBottomLeft, box.backBottomLeft, color, 400);
-    }
-    public struct Box
-    {
-        public Vector3 localFrontTopLeft { get; private set; }
-        public Vector3 localFrontTopRight { get; private set; }
-        public Vector3 localFrontBottomLeft { get; private set; }
-        public Vector3 localFrontBottomRight { get; private set; }
-        public Vector3 localBackTopLeft { get { return -localFrontBottomRight; } }
-        public Vector3 localBackTopRight { get { return -localFrontBottomLeft; } }
-        public Vector3 localBackBottomLeft { get { return -localFrontTopRight; } }
-        public Vector3 localBackBottomRight { get { return -localFrontTopLeft; } }
-        public Vector3 frontTopLeft { get { return localFrontTopLeft + origin; } }
-        public Vector3 frontTopRight { get { return localFrontTopRight + origin; } }
-        public Vector3 frontBottomLeft { get { return localFrontBottomLeft + origin; } }
-        public Vector3 frontBottomRight { get { return localFrontBottomRight + origin; } }
-        public Vector3 backTopLeft { get { return localBackTopLeft + origin; } }
-        public Vector3 backTopRight { get { return localBackTopRight + origin; } }
-        public Vector3 backBottomLeft { get { return localBackBottomLeft + origin; } }
-        public Vector3 backBottomRight { get { return localBackBottomRight + origin; } }
-        public Vector3 origin { get; private set; }
-        public Box(Vector3 origin, Vector3 halfExtents, Quaternion orientation) : this(origin, halfExtents)
-        {
-            Rotate(orientation);
-        }
-        public Box(Vector3 origin, Vector3 halfExtents)
-        {
-            this.localFrontTopLeft = new Vector3(-halfExtents.x, halfExtents.y, -halfExtents.z);
-            this.localFrontTopRight = new Vector3(halfExtents.x, halfExtents.y, -halfExtents.z);
-            this.localFrontBottomLeft = new Vector3(-halfExtents.x, -halfExtents.y, -halfExtents.z);
-            this.localFrontBottomRight = new Vector3(halfExtents.x, -halfExtents.y, -halfExtents.z);
-
-            this.origin = origin;
-        }
-        public void Rotate(Quaternion orientation)
-        {
-            localFrontTopLeft = RotatePointAroundPivot(localFrontTopLeft, Vector3.zero, orientation);
-            localFrontTopRight = RotatePointAroundPivot(localFrontTopRight, Vector3.zero, orientation);
-            localFrontBottomLeft = RotatePointAroundPivot(localFrontBottomLeft, Vector3.zero, orientation);
-            localFrontBottomRight = RotatePointAroundPivot(localFrontBottomRight, Vector3.zero, orientation);
-        }
-    }
-    static Vector3 CastCenterOnCollision(Vector3 origin, Vector3 direction, float hitInfoDistance)
-    {
-        return origin + (direction.normalized * hitInfoDistance);
-    }
-    static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Quaternion rotation)
-    {
-        Vector3 direction = point - pivot;
-        return pivot + rotation * direction;
     }
 
     #endregion
@@ -915,6 +821,7 @@ class DMapNode : IHeapItem<DMapNode>
         return -compare;
     }
 }
+// pivot class
 struct RoomPivot 
 {
     public DMapNode MapNode;
@@ -937,6 +844,7 @@ struct RoomPivot
 
 #endregion
 
+// node class
 [System.Serializable]
 public struct DMainNodes
 {
@@ -954,21 +862,5 @@ public struct DMainNodes
     }
 }
 
-//[System.Serializable]
-//public class room
-//{
-//    public int Difficulty;
-//    public Vector2 Size;
-//    public GameObject RoomObj;
-//    [HideInInspector]
-//    public bool FoldOut = false;
-
-//    public room(int _Difficulty, Vector2 _Size, GameObject _RoomObj)
-//    {
-//        Difficulty = _Difficulty;
-//        Size = _Size;
-//        RoomObj = _RoomObj;
-//    }
-//}
 
 

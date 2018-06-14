@@ -5,7 +5,8 @@ using System;
 
 public class CaveGeneratorScript : MonoBehaviour
 {
-    CaveMeshGeneratorScript meshGenerator;
+    [HideInInspector]
+   public CaveMeshGeneratorScript meshGenerator;
 
     public int width, height;
     public bool GenerateAtRunTime = false;
@@ -17,7 +18,7 @@ public class CaveGeneratorScript : MonoBehaviour
 
     [Range(1, 10)] public int borderSize = 2;
     [Range(0, 30)] public int smoothness = 10;
-    [Range(0, 100)] public int fillPercent;
+    [Range(0, 50)] public int fillPercent;
 
     enum Meshes { EMPTY = 0, WALL = 1 };
     int[,] map;
@@ -28,12 +29,15 @@ public class CaveGeneratorScript : MonoBehaviour
     // ------------------------------
     void Start()
     {
-        meshGenerator = GetComponent<CaveMeshGeneratorScript>();
-        generateRandomSeed = true;
-        generateExits = false;
-        generateEntrance = false;
-        generateGround = false;
-        GenerateMap();
+        if (GenerateAtRunTime)
+        {
+            meshGenerator = GetComponent<CaveMeshGeneratorScript>();
+            generateRandomSeed = true;
+            generateExits = false;
+            generateEntrance = false;
+            generateGround = false;
+            GenerateMap();
+        }
     }
 
     // ------------------------------
@@ -110,7 +114,7 @@ public class CaveGeneratorScript : MonoBehaviour
                 else
                 {
                     // Obtain random number (either 1 [wall] or 0 [empty])
-                    map[i, j] = (randomNum.Next(0, 100) < fillPercent) ? (int)Meshes.WALL : (int)Meshes.EMPTY;
+                    map[i, j] = (randomNum.Next(0, 100) < fillPercent - 3) ? (int)Meshes.WALL : (int)Meshes.EMPTY;
                 }
             }
         }

@@ -200,7 +200,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 200
   height: 200
-  GenerateInRunTime: 1
+  GenerateInRunTime: 0
   seed: 0
   generateRandomSeed: 1
   generateExit: 1

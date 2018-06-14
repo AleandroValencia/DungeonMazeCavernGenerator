@@ -80,7 +80,7 @@ public class CaveMeshGeneratorScript : MonoBehaviour
     {
         // Delete old wall colliders from previously generated cave
         MeshCollider currentCollider = GetComponent<MeshCollider>();
-        Destroy(currentCollider);
+        DestroyImmediate(currentCollider);
 
         CalculateMeshOutlines();
 

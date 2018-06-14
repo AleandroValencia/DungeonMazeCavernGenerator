@@ -4,4 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Levels/Rony Level (Cave).unity
+    guid: 2df34f46f38ca6b4ea81f71ffeb0ef00
+  m_configObjects: {}

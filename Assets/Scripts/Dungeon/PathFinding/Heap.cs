@@ -1,5 +1,6 @@
 ﻿using System;
 
+// quick heap class writen for using in pathfinding algorithm for dungeon generator
 public class Heap<T> where T : IHeapItem<T>
 {
 	

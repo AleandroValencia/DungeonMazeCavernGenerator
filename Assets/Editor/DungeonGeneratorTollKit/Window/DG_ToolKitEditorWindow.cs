@@ -20,14 +20,20 @@ public class DG_ToolKitEditorWindow : EditorWindow
     public string C_seed = "0";
     public bool C_isRandomSeed;
     public int C_randomFillPercent;
-    public Vector3 C_Pos;
-    Material C_RockMat;
+    public int C_borderSize = 2;
+    public int C_smoothness = 10;
+    Material C_GroundMat;
     Material C_WallMat;
-    MeshFilter C_Mesh;
+    public Vector3 C_Pos;
+    public bool C_generateExits;
+    public bool C_generateEntrance;
+    public bool C_generateGround;
     public string C_Name;
     int C_NumberofPresses = 0;
     bool C_GeneratedOnce = false;
     GameObject C_CurrCavern;
+
+    public int C_texTiling;
 
     #endregion
 
@@ -146,11 +152,16 @@ public class DG_ToolKitEditorWindow : EditorWindow
         {
             GenerateInRunTime = false;
         }
-        C_Pos = EditorGUILayout.Vector3Field("Object Position", C_Pos);
 
+        C_Pos = EditorGUILayout.Vector3Field("Object Position", C_Pos);
         C_width = EditorGUILayout.IntField("Width", C_width);
         C_height = EditorGUILayout.IntField("Height", C_height);
-        C_randomFillPercent = EditorGUILayout.IntSlider("Fill Percentage", C_randomFillPercent, 0, 100);
+        C_randomFillPercent = EditorGUILayout.IntSlider("Fill Percentage", C_randomFillPercent, 1, 50);
+        C_borderSize = EditorGUILayout.IntSlider("Border Size", C_borderSize, 1, 10);
+        C_smoothness = EditorGUILayout.IntSlider("Smoothness", C_smoothness, 0, 30);
+        C_texTiling = EditorGUILayout.IntSlider("Texture Tiling", C_texTiling, 1, 100);
+        C_GroundMat = EditorGUILayout.ObjectField("Ground Material", C_GroundMat, typeof(Material)) as Material;
+        C_WallMat = EditorGUILayout.ObjectField("Wall Material", C_WallMat, typeof(Material)) as Material;
         C_seed = EditorGUILayout.TextField("Seed", C_seed);
         if (GUILayout.Toggle(C_isRandomSeed, "Use Random Seed"))
         {
@@ -161,15 +172,63 @@ public class DG_ToolKitEditorWindow : EditorWindow
             C_isRandomSeed = false;
         }
 
-        C_RockMat = EditorGUILayout.ObjectField("Rock Material", C_RockMat, typeof(Material)) as Material;
-        C_WallMat = EditorGUILayout.ObjectField("Wall Material", C_WallMat, typeof(Material)) as Material;
+        if (GUILayout.Toggle(C_generateExits, "Generate Exit"))
+        {
+            C_generateExits = true;
+        }
+        else
+        {
+            C_generateExits = false;
+        }
+
+        if (GUILayout.Toggle(C_generateEntrance, "Generate Entrance"))
+        {
+            C_generateEntrance = true;
+        }
+        else
+        {
+            C_generateEntrance = false;
+        }
+
+        if (GUILayout.Toggle(C_generateGround, "Generate Ground"))
+        {
+            C_generateGround = true;
+        }
+        else
+        {
+            C_generateGround = false;
+        }
+
 
         if (GUILayout.Button("Generate New"))
         {
+            // Ensure the cave is at least 70x70 dimension (70x70 = smallest possible "interesting" cave) 
+            if (C_width < 70)
+                C_width = 70;
+            if (C_height < 70)
+                C_height = 70;
+
+            // Ensure it is no more than 270x270 (users can still scale the cave mesh through the editor just fine in case they wanted bigger cave(s))
+            if (C_width > 270)
+                C_width = 270;
+            if (C_height > 270)
+                C_height = 270;
+
             GenereateNewCavern();
         }
         if (GUILayout.Button("Regenerate"))
         {
+            // Ensure the cave is at least 70x70 dimension (70x70 = smallest possible "interesting" cave) 
+            if (C_width < 70)
+                C_width = 70;
+            if (C_height < 70)
+                C_height = 70;
+
+            // Ensure it is no more than 270x270 (users can still scale the cave mesh through the editor just fine in case they wanted bigger cave(s))
+            if (C_width > 270)
+                C_width = 270;
+            if (C_height > 270)
+                C_height = 270;
 
             if (C_GeneratedOnce && C_CurrCavern != null)
             {
@@ -201,8 +260,8 @@ public class DG_ToolKitEditorWindow : EditorWindow
         //Make Game Object
         GameObject g = new GameObject(C_Name.ToString());
         g.transform.position = C_Pos;
-        g.AddComponent<MeshFilter>();
-        g.AddComponent<MeshRenderer>();
+        //g.AddComponent<MeshFilter>();
+        //g.AddComponent<MeshRenderer>();
         g.AddComponent<CaveGeneratorScript>();
         g.AddComponent<CaveMeshGeneratorScript>();
 
@@ -213,8 +272,13 @@ public class DG_ToolKitEditorWindow : EditorWindow
         MapGen.generateRandomSeed = C_isRandomSeed;
         MapGen.fillPercent = C_randomFillPercent;
         MapGen.GenerateAtRunTime = GenerateInRunTime;
+        MapGen.borderSize = C_borderSize;
+        MapGen.smoothness = C_smoothness;
+        MapGen.generateEntrance = C_generateEntrance;
+        MapGen.generateExits = C_generateExits;
+        MapGen.generateGround = C_generateGround;
+        MapGen.meshGenerator = g.AddComponent<CaveMeshGeneratorScript>();
 
-        g.GetComponent<MeshRenderer>().material = C_RockMat;
 
         GameObject w = new GameObject("Walls");
         w.transform.parent = g.transform;
@@ -223,7 +287,24 @@ public class DG_ToolKitEditorWindow : EditorWindow
         w.AddComponent<MeshRenderer>();
         w.GetComponent<MeshRenderer>().material = C_WallMat;
 
-        g.GetComponent<CaveMeshGeneratorScript>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        GameObject c = new GameObject("Cave");
+        c.transform.parent = g.transform;
+        c.transform.position = C_Pos;
+        c.AddComponent<MeshFilter>();
+        c.AddComponent<MeshRenderer>();
+        c.GetComponent<MeshRenderer>().material = C_WallMat;
+
+        GameObject gr = new GameObject("CaveGround");
+        gr.transform.parent = g.transform;
+        gr.transform.position = C_Pos;
+        gr.AddComponent<MeshFilter>();
+        gr.AddComponent<MeshRenderer>();
+        gr.GetComponent<MeshRenderer>().material = C_GroundMat;
+
+        MapGen.meshGenerator.texTiling = C_texTiling;
+        MapGen.meshGenerator.walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        MapGen.meshGenerator.ground = gr.GetComponent<MeshFilter>();
+        MapGen.meshGenerator.cave = c.GetComponent<MeshFilter>();
         if (!GenerateInRunTime)
         {
             MapGen.GenerateMap();
@@ -242,13 +323,24 @@ public class DG_ToolKitEditorWindow : EditorWindow
         MapGen.generateRandomSeed = C_isRandomSeed;
         MapGen.fillPercent = C_randomFillPercent;
         MapGen.GenerateAtRunTime = GenerateInRunTime;
+        MapGen.borderSize = C_borderSize;
+        MapGen.smoothness = C_smoothness;
+        MapGen.generateEntrance = C_generateEntrance;
+        MapGen.generateExits = C_generateExits;
+        MapGen.generateGround = C_generateGround;
 
-        C_CurrCavern.GetComponent<MeshRenderer>().material = C_RockMat;
 
         GameObject w = C_CurrCavern.transform.Find("Walls").gameObject;
         w.GetComponent<MeshRenderer>().material = C_WallMat;
+        GameObject c = C_CurrCavern.transform.Find("Cave").gameObject;
+        c.GetComponent<MeshRenderer>().material = C_WallMat;
+        GameObject gr = C_CurrCavern.transform.Find("CaveGround").gameObject;
+        gr.GetComponent<MeshRenderer>().material = C_GroundMat;
 
-        C_CurrCavern.GetComponent<CaveMeshGeneratorScript>().walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        MapGen.meshGenerator.texTiling = C_texTiling;
+        MapGen.meshGenerator.walls = w.GetComponent<MeshFilter>(); //C_Mesh;
+        MapGen.meshGenerator.ground = gr.GetComponent<MeshFilter>();
+        MapGen.meshGenerator.cave = c.GetComponent<MeshFilter>();
         if (!GenerateInRunTime)
         {
             MapGen.GenerateMap();
@@ -314,7 +406,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
         {
             EditorUtility.DisplayDialog("ERROR", "Can't have negative rows.", "OK");
         }
-        else if(M_width <=0)
+        else if (M_width <= 0)
         {
             EditorUtility.DisplayDialog("ERROR", "Can't have negative columns.", "OK");
         }
@@ -505,7 +597,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
                                 EditorUtility.DisplayDialog("ERROR",
                                                                  "You have not set the size of your starting or ending rooms", "OK");
                             }
-                            else if(D_DifficultiesError)
+                            else if (D_DifficultiesError)
                             {
                                 EditorUtility.DisplayDialog("ERROR",
                                                                  " There are less than two rooms that are with in your target difficulty Range\n Please check this before continuing", "OK");
@@ -547,7 +639,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
                 D_Rooms[i].Size = EditorGUILayout.Vector2Field("Room Size", D_Rooms[i].Size);
                 D_Rooms[i].RoomObj = EditorGUILayout.ObjectField("Room Object", D_Rooms[i].RoomObj, typeof(GameObject)) as GameObject;
 
-                if(D_Rooms[i].Difficulty >= D_TargetDifficultyMin && D_Rooms[i].Difficulty <= D_TargetDifficultyMax)
+                if (D_Rooms[i].Difficulty >= D_TargetDifficultyMin && D_Rooms[i].Difficulty <= D_TargetDifficultyMax)
                 {
                     ErrorCount++;
                 }
@@ -555,7 +647,7 @@ public class DG_ToolKitEditorWindow : EditorWindow
             }
         }
 
-        if(ErrorCount < 2)
+        if (ErrorCount < 2)
         {
             D_DifficultiesError = true;
         }

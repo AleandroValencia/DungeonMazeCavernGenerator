@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+//room class used for dungeon has refference for difficulty 
+//size and object of rooms that will be used in dungeon generator
 [System.Serializable]
 public class room
 {
